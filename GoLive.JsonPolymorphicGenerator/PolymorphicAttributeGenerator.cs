@@ -34,16 +34,11 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
 
     private void Execute(ImmutableArray<(ClassDeclarationSyntax cl, INamedTypeSymbol nts)> polyClasses, ImmutableArray<INamedTypeSymbol> allClasses, SourceProductionContext spc)
     {
-        var ssb = new SourceStringBuilder();
-        ssb.AppendLine($"// Generated on {DateTime.Now}");
-        ssb.AppendLine($"// Found {polyClasses.Length} Poly classes");
-        ssb.AppendLine($"// Found {allClasses.Length} candidate classes");
-        ssb.AppendLine();
-        ssb.AppendLine("using System.Text.Json.Serialization;");
-        ssb.AppendLine();
-        
         foreach (var namedTypeSymbol in polyClasses)
         {
+            var ssb = new SourceStringBuilder();
+            ssb.AppendLine("using System.Text.Json.Serialization;");
+            ssb.AppendLine();
             var res = allClasses.Where(e => Scanner.InheritsFrom(e, namedTypeSymbol.nts));
 
             if (res.Any())
@@ -62,10 +57,10 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
                 ssb.AppendCloseCurlyBracketLine();
                 ssb.AppendLine();
                 ssb.AppendLine();
+                
+                spc.AddSource($"{namedTypeSymbol.nts.Name}.g.cs", ssb.ToString());
             }
         }
-
-        spc.AddSource("generated.cs", ssb.ToString());
     }
 
     private static INamedTypeSymbol GetDeclarations(GeneratorSyntaxContext context)
