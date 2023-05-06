@@ -1,0 +1,9 @@
+﻿{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "GoLive.JsonPolymorphicGenerator": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\GoLive.JsonPolymorphicGenerator.Playground\\GoLive.JsonPolymorphicGenerator.Playground.csproj"
+    }
+  }
+}
