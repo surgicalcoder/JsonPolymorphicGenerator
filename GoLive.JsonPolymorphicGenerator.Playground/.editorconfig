@@ -1,0 +1,4 @@
+root = true
+
+[*.cs]
+jsonpolymorphicgenerator.text_preappend = Hello

@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace GoLive.JsonPolymorphicGenerator;
 
@@ -27,19 +28,23 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
         ).Where(static c => c is not null);
 
         var items = allParentPolyClasses.Collect().Combine(allClasses.Collect());
+
+        var items2 = context.AnalyzerConfigOptionsProvider.Combine(items);
         
-        context.RegisterSourceOutput(items, (spc, source) => Execute(source.Left, source.Right, spc) );
+        context.RegisterSourceOutput(items2, (spc, source) => Execute2(source.Left, source.Right, spc) );
     }
 
-
-    private void Execute(ImmutableArray<(ClassDeclarationSyntax cl, INamedTypeSymbol nts)> polyClasses, ImmutableArray<INamedTypeSymbol> allClasses, SourceProductionContext spc)
+    private void Execute2(AnalyzerConfigOptionsProvider config, (ImmutableArray<(ClassDeclarationSyntax cl, INamedTypeSymbol nts)> polyClasses, ImmutableArray<INamedTypeSymbol> Right) allClasses, SourceProductionContext spc)
     {
-        foreach (var namedTypeSymbol in polyClasses)
+        foreach (var namedTypeSymbol in allClasses.polyClasses)
         {
+            _ = config.GetOptions(namedTypeSymbol.cl.SyntaxTree).TryGetValue("jsonpolymorphicgenerator.text_preappend", out string? preAppend);
+            _ = config.GetOptions(namedTypeSymbol.cl.SyntaxTree).TryGetValue("jsonpolymorphicgenerator.text_postappend", out string? postAppend);
+            
             var ssb = new SourceStringBuilder();
             ssb.AppendLine("using System.Text.Json.Serialization;");
             ssb.AppendLine();
-            var res = allClasses.Where(e => Scanner.InheritsFrom(e, namedTypeSymbol.nts));
+            var res = allClasses.Right.Where(e => Scanner.InheritsFrom(e, namedTypeSymbol.nts));
 
             if (res.Any())
             {
@@ -48,7 +53,7 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
                 
                 foreach (var symbol in res)
                 {
-                    ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{symbol.ToDisplayString(shortDisplayFormat)}\")]");
+                    ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{preAppend}{symbol.ToDisplayString(shortDisplayFormat)}{postAppend}\")]");
                 }
                 
                 ssb.AppendLine($"public partial class {namedTypeSymbol.nts.Name}");
