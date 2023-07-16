@@ -24,3 +24,16 @@ public partial class BaseClass
 {
 }
 ```
+
+You can now transform the text of the attributes that gets spat out! You have a number of options, that gets added to an `.editorconfig`, such as:
+
+```
+root = true
+
+[*.cs]
+jsonpolymorphicgenerator.text_preappend = JSON_
+jsonpolymorphicgenerator.text_transform = return classname.GetHashCode().ToString()
+jsonpolymorphicgenerator.text_postappend = _A
+```
+
+For the `jsonpolymorphicgenerator.text_transform` option, you have to provide valid c# code, that returns a string - there are 2 input variables - `classname` and `namespacename`
