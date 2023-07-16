@@ -1,4 +1,5 @@
 root = true
 
 [*.cs]
-jsonpolymorphicgenerator.text_preappend = Hello
+jsonpolymorphicgenerator.text_preappend = JSON_
+jsonpolymorphicgenerator.text_transform = return classname.GetHashCode().ToString()

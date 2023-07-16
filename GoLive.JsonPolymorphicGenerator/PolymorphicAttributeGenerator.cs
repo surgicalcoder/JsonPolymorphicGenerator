@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Linq;
+using Data.Eval;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -40,6 +41,7 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
         {
             _ = config.GetOptions(namedTypeSymbol.cl.SyntaxTree).TryGetValue("jsonpolymorphicgenerator.text_preappend", out string? preAppend);
             _ = config.GetOptions(namedTypeSymbol.cl.SyntaxTree).TryGetValue("jsonpolymorphicgenerator.text_postappend", out string? postAppend);
+            _ = config.GetOptions(namedTypeSymbol.cl.SyntaxTree).TryGetValue("jsonpolymorphicgenerator.text_transform", out string? codeExecution);//
             
             var ssb = new SourceStringBuilder();
             ssb.AppendLine("using System.Text.Json.Serialization;");
@@ -53,7 +55,25 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
                 
                 foreach (var symbol in res)
                 {
-                    ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{preAppend}{symbol.ToDisplayString(shortDisplayFormat)}{postAppend}\")]");
+                    if (!string.IsNullOrWhiteSpace(codeExecution))
+                    {
+                        try
+                        {
+                            var eval = new Evaluator(codeExecution);
+                            eval["classname"] = symbol.ToDisplayString(shortDisplayFormat);
+                            eval["namespacename"] = symbol.ContainingNamespace.ToDisplayString();
+                            var outp = eval.Eval<string>();
+                            ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{preAppend}{outp}{postAppend}\")]");
+                        }
+                        catch (Exception)
+                        {
+                            ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{preAppend}{symbol.ToDisplayString(shortDisplayFormat)}{postAppend}\")]");
+                        }
+                    }
+                    else
+                    {
+                        ssb.AppendLine($"[JsonDerivedType(typeof({symbol.ToDisplayString(fullDisplayFormat)}), \"{preAppend}{symbol.ToDisplayString(shortDisplayFormat)}{postAppend}\")]");
+                    }
                 }
                 
                 ssb.AppendLine($"public partial class {namedTypeSymbol.nts.Name}");
@@ -78,7 +98,6 @@ public class PolymorphicAttributeGenerator : IIncrementalGenerator
     private static (ClassDeclarationSyntax cl, INamedTypeSymbol nts) GetDeclarationsThatHasAttr(GeneratorSyntaxContext context)
     {
         var classDeclarationSyntax = (ClassDeclarationSyntax)context.Node;
-        //var methodDeclarationSyntax = (MethodDeclarationSyntax)context.Node;
         foreach (var attributeListSyntax in classDeclarationSyntax.AttributeLists)
         {
             foreach (var attributeSyntax in attributeListSyntax.Attributes)
